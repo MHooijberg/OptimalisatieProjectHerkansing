@@ -143,9 +143,6 @@ void Game::update(float deltaTime)
         }
     }
 
-    for (Rocket& rocket : rockets) {
-        rocket.tick();
-    }
 
     // TODO: Sort from left to right and up to down, might not be needed. Its only needed for the convex hull algorithm.
     vector<Tank*> activeTanks;
@@ -170,6 +167,10 @@ void Game::update(float deltaTime)
                 }
             }
         }
+    }
+
+    for (Rocket& rocket : rockets) {
+        rocket.tick();
     }
 
     //for (vector<Tank*>::iterator tank = activeTanks.begin(); tank != activeTanks.end();) {

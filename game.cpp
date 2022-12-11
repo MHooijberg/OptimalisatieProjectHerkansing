@@ -14,7 +14,7 @@ constexpr auto health_bar_width = 70;
 constexpr auto max_frames = 2000;
 
 //Global performance timer
-constexpr auto REF_PERFORMANCE = 293764; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
+constexpr auto REF_PERFORMANCE = 89038.8; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
 static timer perf_timer;
 static float duration;
 
@@ -162,7 +162,7 @@ void Game::update(float deltaTime)
     // ====
     if (frame_count == 0)
     {
-        /*int start_at = 0;
+        int start_at = 0;
         for (int count : split_sizes_tanks) {
             threads.push_back(pool->enqueue([&, start_at, count]() {
                 for (int j = start_at; j < start_at + count; j++) {
@@ -174,17 +174,50 @@ void Game::update(float deltaTime)
                 }
                 }));
             start_at += count;
-        }*/
-        for (Tank& t : tanks)
+        }
+        wait_and_clear(threads);
+        /*for (Tank& t : tanks)
         {
             t.set_route(background_terrain.get_route(t, t.target));
-        }
+        }*/
     }
 
 
     // TODO: Sort from left to right and up to down, might not be needed. Its only needed for the convex hull algorithm.
     vector<Tank*> activeTanks;
-    for (Tank& tank : tanks) {
+    int start_at = 0;
+    for (int count : split_sizes_tanks) {
+        threads.push_back(pool->enqueue([&, start_at, count]() {
+            for (int j = start_at; j < start_at + count; j++) {
+                Tank& tank = tanks.at(j);
+                if (tank.active)
+                {
+                    mlock.lock();
+                    activeTanks.push_back(&tank);
+                    mlock.unlock();
+                    // Check for tank collision.
+                    for (Tank& other_tank : tanks)
+                    {
+                        if (&tank == &other_tank || !other_tank.active) continue;
+
+                        vec2 dir = tank.get_position() - other_tank.get_position();
+                        float dir_squared_len = dir.sqr_length();
+
+                        float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
+                        col_squared_len *= col_squared_len;
+
+                        if (dir_squared_len < col_squared_len)
+                        {
+                            tank.push(dir.normalized(), 1.f);
+                        }
+                    }
+                }
+            }
+            }));
+        start_at += count;
+    }
+    wait_and_clear(threads);
+    /*for (Tank& tank : tanks) {
         if (tank.active)
         {
             activeTanks.push_back(&tank);
@@ -205,7 +238,7 @@ void Game::update(float deltaTime)
                 }
             }
         }
-    }
+    }*/
 
     for (Rocket& rocket : rockets) {
         rocket.tick();
@@ -214,9 +247,8 @@ void Game::update(float deltaTime)
     //for (vector<Tank*>::iterator tank = activeTanks.begin(); tank != activeTanks.end();) {
 
     //for (auto tank : activeTanks) {
-    int start_at = 0;
-    vector<int> split_active_tanks = split_evenly(activeTanks.size(), NUM_OF_THREADS);
-    for (int count : split_active_tanks) {
+    start_at = 0;
+    for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
             for (int j = start_at; j < start_at + count; j++) {
                 Tank*& tank = activeTanks.at(j);

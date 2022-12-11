@@ -41,6 +41,29 @@ const static vec2 rocket_size(6, 6);
 const static float tank_radius = 3.f;
 const static float rocket_radius = 5.f;
 
+const int NUM_OF_THREADS = std::thread::hardware_concurrency() * 2;
+ThreadPool* pool = new ThreadPool(NUM_OF_THREADS);
+std::mutex mlock;
+vector<future<void>> threads;
+
+vector<int> split_evenly(int dividend, int divisor) {
+    int remainder = dividend % divisor;
+
+    int initial_value = floor(dividend / divisor);
+    vector<int> results;
+    for (int i = 0; i < divisor; i++)
+        results.push_back(initial_value + (remainder-- > 0 ? 1 : 0));
+    return results;
+}
+
+void wait_and_clear(vector<future<void>>& threads) {
+    for (future<void>& t : threads) {
+        t.wait();
+    }
+    threads.clear();
+}
+
+
 // -----------------------------------------------------------
 // Initialize the simulation state
 // This function does not count for the performance multiplier
@@ -130,6 +153,8 @@ bool Tmpl8::Game::left_of_line(vec2 line_start, vec2 line_end, vec2 point)
 // ====
 void Game::update(float deltaTime)
 {
+    threads.reserve(NUM_OF_THREADS);
+    vector<int> split_sizes_tanks = split_evenly(tanks.size(), NUM_OF_THREADS);
     //Calculate the route to the destination for each tank using BFS
     //Initializing routes here so it gets counted for performance..
     // ====
@@ -137,6 +162,19 @@ void Game::update(float deltaTime)
     // ====
     if (frame_count == 0)
     {
+        /*int start_at = 0;
+        for (int count : split_sizes_tanks) {
+            threads.push_back(pool->enqueue([&, start_at, count]() {
+                for (int j = start_at; j < start_at + count; j++) {
+                    Tank& t = tanks.at(j);
+                    mlock.lock();
+                    t.set_route(background_terrain.get_route(t, t.target));
+                    mlock.unlock();
+
+                }
+                }));
+            start_at += count;
+        }*/
         for (Tank& t : tanks)
         {
             t.set_route(background_terrain.get_route(t, t.target));
@@ -174,53 +212,76 @@ void Game::update(float deltaTime)
     }
 
     //for (vector<Tank*>::iterator tank = activeTanks.begin(); tank != activeTanks.end();) {
-    for (auto tank : activeTanks) {
-        //Move tanks according to speed and nudges (see above) also reload
-        tank->tick(background_terrain);
 
-        //Shoot at closest target if reloaded
-        if (tank->rocket_reloaded())
-        {
-            Tank& target = find_closest_enemy(*tank);
+    //for (auto tank : activeTanks) {
+    int start_at = 0;
+    vector<int> split_active_tanks = split_evenly(activeTanks.size(), NUM_OF_THREADS);
+    for (int count : split_active_tanks) {
+        threads.push_back(pool->enqueue([&, start_at, count]() {
+            for (int j = start_at; j < start_at + count; j++) {
+                Tank*& tank = activeTanks.at(j);
 
-            rockets.push_back(Rocket(tank->position, (target.get_position() - tank->position).normalized() * 3, rocket_radius, tank->allignment, ((tank->allignment == RED) ? &rocket_red : &rocket_blue)));
+                //Move tanks according to speed and nudges (see above) also reload
+                tank->tick(background_terrain);
 
-            tank->reload_rocket();
-        }
-
-        // Check for rocket collision.
-        //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
-        for (Rocket& rocket : rockets)
-        {
-            if ((tank->allignment != rocket.allignment) && rocket.intersects(tank->position, tank->collision_radius))
-            {
-                // TODO: Should remove rocket from list
-                rocket.active = false;
-                explosions.push_back(Explosion(&explosion, tank->position));
-
-                if (tank->hit(rocket_hit_value))
+                //Shoot at closest target if reloaded
+                if (tank->rocket_reloaded())
                 {
-                    smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
-                    break;
+                    Tank& target = find_closest_enemy(*tank);
+
+                    mlock.lock();
+                    rockets.push_back(Rocket(tank->position, (target.get_position() - tank->position).normalized() * 3, rocket_radius, tank->allignment, ((tank->allignment == RED) ? &rocket_red : &rocket_blue)));
+                    mlock.unlock();
+
+                    tank->reload_rocket();
                 }
-            }
-        }
 
-        if (tank->active) {
-            // Check for beam collision.
-            for (Particle_beam& particle_beam : particle_beams)
-            {
-                if (particle_beam.rectangle.intersects_circle(tank->get_position(), tank->get_collision_radius()))
+                // Check for rocket collision.
+                //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
+                for (Rocket& rocket : rockets)
                 {
-                    if (tank->hit(particle_beam.damage))
+                    if ((tank->allignment != rocket.allignment) && rocket.intersects(tank->position, tank->collision_radius))
                     {
-                        smokes.push_back(Smoke(smoke, tank->position - vec2(0, 48)));
-                        break;
+                        // TODO: Should remove rocket from list
+                        rocket.active = false;
+                        
+                        mlock.lock();
+                        explosions.push_back(Explosion(&explosion, tank->position));
+                        mlock.unlock();
+
+                        if (tank->hit(rocket_hit_value))
+                        {
+                            mlock.lock();
+                            smokes.push_back(Smoke(smoke, tank->position - vec2(7, 24)));
+                            mlock.unlock();
+                            break;
+                        }
                     }
                 }
+
+                if (tank->active) {
+                    // Check for beam collision.
+                    for (Particle_beam& particle_beam : particle_beams)
+                    {
+                        if (particle_beam.rectangle.intersects_circle(tank->get_position(), tank->get_collision_radius()))
+                        {
+                            if (tank->hit(particle_beam.damage))
+                            {
+                                mlock.lock();
+                                smokes.push_back(Smoke(smoke, tank->position - vec2(0, 48)));
+                                mlock.unlock();
+                                break;
+                            }
+                        }
+                    }
+                }
+
             }
-        }
+            }));
+        start_at += count;
+        
     }
+    wait_and_clear(threads);
 
     // Calculate convex hull.
     if (!rockets.empty())

@@ -65,3 +65,7 @@ class Game
 };
 
 }; // namespace Tmpl8
+
+vector<int> split_evenly(int size, int split_size);
+
+void wait_and_clear(vector<future<void>>& threads);

@@ -14,7 +14,7 @@ constexpr auto health_bar_width = 70;
 constexpr auto max_frames = 2000;
 
 //Global performance timer
-constexpr auto REF_PERFORMANCE = 89038.8; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
+constexpr auto REF_PERFORMANCE = 51059; //UPDATE THIS WITH YOUR REFERENCE PERFORMANCE (see console after 2k frames)
 static timer perf_timer;
 static float duration;
 
@@ -362,7 +362,26 @@ void Game::update(float deltaTime)
 
     // TODO: Check if it's more efficient to also delete rockets here.
     // Check if rocket is outside the convex hull.
-    for (Rocket& rocket : rockets) {
+    start_at = 0;
+    for (int count : split_sizes_tanks) {
+        threads.push_back(pool->enqueue([ &, start_at, count](){
+            for (int j = start_at; j < start_at + count; j++) {
+                Rocket& rocket = rockets.at(j);
+                if (rocket.active) {
+                    for (size_t i = 0; i < forcefield_hull.size(); i++)
+                    {
+                        if (left_of_line(forcefield_hull.at(i), forcefield_hull.at((i + 1) % forcefield_hull.size()), rocket.position))
+                        {
+                            explosions.push_back(Explosion(&explosion, rocket.position));
+                            rocket.active = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            }));
+    }
+    /*for (Rocket& rocket : rockets) {
         if (rocket.active) {
             for (size_t i = 0; i < forcefield_hull.size(); i++)
             {
@@ -374,7 +393,7 @@ void Game::update(float deltaTime)
                 }
             }
         }
-    }
+    }*/
     //Remove exploded rockets with remove erase idiom
     rockets.erase(std::remove_if(rockets.begin(), rockets.end(), [](const Rocket& rocket) { return !rocket.active; }), rockets.end());
 

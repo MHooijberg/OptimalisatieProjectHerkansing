@@ -17,8 +17,8 @@ namespace Tmpl8
         void update(float deltaTime);
         void draw();
         void tick(float deltaTime);
-        void insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end);
-        void draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team);
+        void insertion_sort_tanks_health(const std::vector<int*> sorting_array, int const begin_index, int const end_index);
+        void draw_health_bars(const std::vector<int*> sorted_health, const int team, const int team_size);
         void measure_performance();
 
         Tank& find_closest_enemy(Tank& current_tank);
@@ -46,7 +46,8 @@ namespace Tmpl8
     private:
         Surface* screen;
 
-        vector<Tank> tanks;
+        vector<Tank> active_tanks;
+        vector<Tank> inactive_tanks;
         vector<Rocket> rockets;
         vector<Smoke> smokes;
         vector<Explosion> explosions;

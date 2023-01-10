@@ -729,3 +729,68 @@ void Game::tick(float deltaTime)
     string frame_count_string = "FRAME: " + std::to_string(frame_count);
     frame_count_font->print(screen, frame_count_string.c_str(), 350, 580);
 }
+
+// -----------------------------------------------------------
+// Optimalisation Modifications
+// -----------------------------------------------------------
+void Game::grahamScan(vector<Tank*>& tankList) {
+    // Get a list to get the convex hull from.
+    // Create empty list.
+    // Find lowest and left most point, call this origin.
+    // Sort list by polar angle with Origin, if two or more points have the same polar angle then only keep the farthest.
+    // For each point:
+    //      Check If the point is left of the line from the previous point
+    //      If False:
+    //          Delete last point from list.
+    //      Add point to stack.
+
+    vector<vec2> sortedList;
+    vector<vec2> convexHull;
+    vec2 origin = (*tankList[0]).position;
+    for (auto tank : tankList)
+    {
+        sortedList.push_back(tank->position);
+        if (tank->position.y < origin.y)
+        {
+            origin = tank->position;
+        }
+        else if (tank->position.y == origin.y)
+        {
+            if (tank->position.x < origin.x)
+            {
+                origin = tank->position;
+            }
+        }
+    }
+    
+    std::tuple<int, int> test(origin.x, origin.y);
+    std::sort(sortedList.begin(), sortedList.end(),
+        [&test](vec2 a, vec2 b) -> bool
+        {
+            vec2 base = vec2(std::get<0>(test), std::get<1>(test));
+            return base.polarAngle(a) < base.polarAngle(b);
+        });
+    std::remove_if(sortedList.begin(), sortedList.end(), 
+        [&test](vec2 a, vec2 b) -> bool
+        {
+            vec2 base = vec2(std::get<0>(test), std::get<1>(test));
+            // TODO: Keep furtest away.
+            return base.polarAngle(a) == base.polarAngle(b);
+        });
+    convexHull.push_back(origin);
+    for (size_t i = 1; i < sortedList.size(); i++)
+    {
+        if (origin != sortedList[i]) {
+            if (i == 0)
+            {
+                convexHull.push_back(sortedList[i]);
+                continue;
+            }
+
+            else if (left_of_line(origin, sortedList[i - 1], sortedList[i])) {
+                convexHull.pop_back();
+            }
+            convexHull.push_back(sortedList[i]);
+        }
+    }
+}

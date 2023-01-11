@@ -246,7 +246,8 @@ void Game::update(float deltaTime)
         // ====
         // Big-O analysis: O (N²)
         // ====
-        for (auto tank : activeTanks)
+        grahamScan(activeTanks, forcefield_hull);
+        /*for (auto tank : activeTanks)
         {
             forcefield_hull.push_back(point_on_hull);
             vec2 endpoint = (*activeTanks[0]).position;
@@ -265,7 +266,7 @@ void Game::update(float deltaTime)
             {
                 break;
             }
-        }
+        }*/
     }
 
     // TODO: Check if it's more efficient to also delete rockets here.
@@ -731,9 +732,22 @@ void Game::tick(float deltaTime)
 }
 
 // -----------------------------------------------------------
+// Find orientation for three points in order
+// -----------------------------------------------------------
+int Game::orientation(vec2 p, vec2 q, vec2 r) {
+    // Return if points are on a line
+    // Return 1 if points are in clockwise direction
+    // Return 2 if points are in counterclockwise direction
+    int val = (q[0] - p[0]) * (r[1] - q[1]) -
+        (q[1] - p[1]) * (r[0] - q[0]);
+    if (val == 0) return 0;
+    return (val > 0) ? 1 : 2;
+}
+
+// -----------------------------------------------------------
 // Optimalisation Modifications
 // -----------------------------------------------------------
-void Game::grahamScan(vector<Tank*>& tankList) {
+void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
     // Get a list to get the convex hull from.
     // Create empty list.
     // Find lowest and left most point, call this origin.
@@ -743,54 +757,46 @@ void Game::grahamScan(vector<Tank*>& tankList) {
     //      If False:
     //          Delete last point from list.
     //      Add point to stack.
-
     vector<vec2> sortedList;
     vector<vec2> convexHull;
-    vec2 origin = (*tankList[0]).position;
-    for (auto tank : tankList)
-    {
+    for (auto tank : tankList) {
         sortedList.push_back(tank->position);
-        if (tank->position.y < origin.y)
-        {
-            origin = tank->position;
-        }
-        else if (tank->position.y == origin.y)
-        {
-            if (tank->position.x < origin.x)
-            {
-                origin = tank->position;
-            }
+    }
+    int y_min = sortedList[0][0], min_index = 0;
+    for (size_t i = 1; i < sortedList.size(); i++) {
+        int y = sortedList[i][0];
+        if ((y < y_min) || (y_min == y && sortedList[i][1]< sortedList[min_index][1])) {
+            y_min = sortedList[i][0], min_index = i;
         }
     }
+    std::swap(sortedList[0], sortedList[min_index]);
     
-    std::tuple<int, int> test(origin.x, origin.y);
+    vec2 p0 = (sortedList[0][0], sortedList[0][1]);
     std::sort(sortedList.begin(), sortedList.end(),
-        [&test](vec2 a, vec2 b) -> bool
+        [&p0](vec2 a, vec2 b) -> bool
         {
-            vec2 base = vec2(std::get<0>(test), std::get<1>(test));
-            return base.polarAngle(a) < base.polarAngle(b);
+            auto angle_a = p0.polarAngle(a);
+            auto angle_b = p0.polarAngle(b);
+            if (angle_a == angle_b) return a.sqr_length() < b.sqr_length();
+            else return angle_a < angle_b;
         });
-    std::remove_if(sortedList.begin(), sortedList.end(), 
-        [&test](vec2 a, vec2 b) -> bool
-        {
-            vec2 base = vec2(std::get<0>(test), std::get<1>(test));
-            // TODO: Keep furtest away.
-            return base.polarAngle(a) == base.polarAngle(b);
-        });
-    convexHull.push_back(origin);
-    for (size_t i = 1; i < sortedList.size(); i++)
-    {
-        if (origin != sortedList[i]) {
-            if (i == 0)
-            {
-                convexHull.push_back(sortedList[i]);
-                continue;
-            }
 
-            else if (left_of_line(origin, sortedList[i - 1], sortedList[i])) {
-                convexHull.pop_back();
-            }
-            convexHull.push_back(sortedList[i]);
+    vector<size_t> remove_indices;
+    for (size_t i = 0; i < sortedList.size() - 1; i++) {
+        if (sortedList[i] != sortedList[i + 1]) continue;
+        else {
+            remove_indices.push_back(i);
         }
+    }
+    for (auto& index : remove_indices) std::remove(sortedList.begin(), sortedList.end(), index);
+    
+    if (sortedList.size() < 3) return;
+
+    convex_hull.insert(convex_hull.end(), sortedList.begin(), sortedList.begin() + 2);
+
+    for (size_t i = 3; i < sortedList.size(); i++)
+    {
+        while (convex_hull.size() > 1 && orientation(convex_hull.rbegin()[1], convex_hull.back(), sortedList[i]) != 2) convex_hull.pop_back();
+        convex_hull.push_back(sortedList[i]);
     }
 }

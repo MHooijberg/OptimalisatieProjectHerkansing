@@ -738,8 +738,8 @@ int Game::orientation(vec2 p, vec2 q, vec2 r) {
     // Return if points are on a line
     // Return 1 if points are in clockwise direction
     // Return 2 if points are in counterclockwise direction
-    int val = (q[0] - p[0]) * (r[1] - q[1]) -
-        (q[1] - p[1]) * (r[0] - q[0]);
+    int val =   (q.y - p.y) * (r.x - q.x) -
+                (q.x - p.x) * (r.y - q.y);
     if (val == 0) return 0;
     return (val > 0) ? 1 : 2;
 }
@@ -757,22 +757,21 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
     //      If False:
     //          Delete last point from list.
     //      Add point to stack.
-    vector<vec2> sortedList;
-    vector<vec2> convexHull;
+    vector<vec2> sorted_list;
     for (auto tank : tankList) {
-        sortedList.push_back(tank->position);
+        sorted_list.push_back(tank->position);
     }
-    int y_min = sortedList[0][0], min_index = 0;
-    for (size_t i = 1; i < sortedList.size(); i++) {
-        int y = sortedList[i][0];
-        if ((y < y_min) || (y_min == y && sortedList[i][1]< sortedList[min_index][1])) {
-            y_min = sortedList[i][0], min_index = i;
+    float y_min = sorted_list[0].y, min_index = 0;
+    for (size_t i = 1; i < sorted_list.size(); i++) {
+        float y = sorted_list[i].y;
+        if ((y < y_min) || (y_min == y && sorted_list[i].x< sorted_list[min_index].x)) {
+            y_min = sorted_list[i].y, min_index = i;
         }
     }
-    std::swap(sortedList[0], sortedList[min_index]);
+    std::swap(sorted_list[0], sorted_list[min_index]);
     
-    vec2 p0 = (sortedList[0][0], sortedList[0][1]);
-    std::sort(sortedList.begin(), sortedList.end(),
+    vec2 p0(sorted_list[0].x, sorted_list[0].y);
+    std::sort(sorted_list.begin(), sorted_list.end(),
         [&p0](vec2 a, vec2 b) -> bool
         {
             auto angle_a = p0.polarAngle(a);
@@ -782,21 +781,28 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
         });
 
     vector<size_t> remove_indices;
-    for (size_t i = 0; i < sortedList.size() - 1; i++) {
-        if (sortedList[i] != sortedList[i + 1]) continue;
+    for (size_t i = 0; i < sorted_list.size() - 1; i++) {
+        if (p0.polarAngle(sorted_list[i]) != p0.polarAngle(sorted_list[i + 1])) continue;
         else {
             remove_indices.push_back(i);
         }
     }
-    for (auto& index : remove_indices) std::remove(sortedList.begin(), sortedList.end(), index);
+    //for (auto& index : remove_indices) std::remove(sortedList.begin(), sortedList.end(), index);
+    vector<vec2> non_duplicate_sorted_list;
+    for (size_t i = 0; i < sorted_list.size(); i++) {
+        if (std::count(remove_indices.begin(), remove_indices.end(), i)) continue;
+        else non_duplicate_sorted_list.push_back(sorted_list[i]);
+    }
     
-    if (sortedList.size() < 3) return;
+    if (non_duplicate_sorted_list.size() < 3) return;
 
-    convex_hull.insert(convex_hull.end(), sortedList.begin(), sortedList.begin() + 2);
+    convex_hull.insert(convex_hull.end(), non_duplicate_sorted_list.begin(), non_duplicate_sorted_list.begin() + 3);
 
-    for (size_t i = 3; i < sortedList.size(); i++)
+    for (size_t i = 3; i < non_duplicate_sorted_list.size(); i++)
     {
-        while (convex_hull.size() > 1 && orientation(convex_hull.rbegin()[1], convex_hull.back(), sortedList[i]) != 2) convex_hull.pop_back();
-        convex_hull.push_back(sortedList[i]);
+        while (convex_hull.size() > 1 && orientation(convex_hull.rbegin()[1], convex_hull.back(), non_duplicate_sorted_list[i]) != 2) {
+            convex_hull.pop_back();
+        }
+        convex_hull.push_back(non_duplicate_sorted_list[i]);
     }
 }

@@ -748,15 +748,13 @@ int Game::orientation(vec2 a, vec2 b, vec2 c) {
 // Optimalisation Modifications
 // -----------------------------------------------------------
 void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
-    // Get a list to get the convex hull from.
-    // Create empty list.
-    // Find lowest and left most point, call this origin.
-    // Sort list by polar angle with Origin, if two or more points have the same polar angle then only keep the farthest.
-    // For each point:
-    //      Check If the point is left of the line from the previous point
-    //      If False:
-    //          Delete last point from list.
-    //      Add point to stack.
+    // Create copy of active tank list
+    // Get the vec2 with lowest y value and put it at the front as p0
+    // Sort list by ascending polar angle, if equal put closest point first
+    // Check if any points have the same polar angle, save index of close-by one
+    // Make copy of sorted list, removing duplicate polar angle incices
+    // Check if list is bigger than 3
+    // Run through Graham Scan algorithm, continuously checking if resulting hull is convex, otherwise removing a value
     vector<vec2> sorted_list;
     for (auto tank : tankList) {
         sorted_list.push_back(tank->position);

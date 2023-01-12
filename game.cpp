@@ -734,12 +734,12 @@ void Game::tick(float deltaTime)
 // -----------------------------------------------------------
 // Find orientation for three points in order
 // -----------------------------------------------------------
-int Game::orientation(vec2 p, vec2 q, vec2 r) {
+int Game::orientation(vec2 a, vec2 b, vec2 c) {
     // Return if points are on a line
     // Return 1 if points are in clockwise direction
     // Return 2 if points are in counterclockwise direction
-    int val =   (q.y - p.y) * (r.x - q.x) -
-                (q.x - p.x) * (r.y - q.y);
+    int val =   (b.y - a.y) * (c.x - b.x) -
+                (b.x - a.x) * (c.y - b.y);
     if (val == 0) return 0;
     return (val > 0) ? 1 : 2;
 }
@@ -787,7 +787,7 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
             remove_indices.push_back(i);
         }
     }
-    //for (auto& index : remove_indices) std::remove(sortedList.begin(), sortedList.end(), index);
+
     vector<vec2> non_duplicate_sorted_list;
     for (size_t i = 0; i < sorted_list.size(); i++) {
         if (std::count(remove_indices.begin(), remove_indices.end(), i)) continue;

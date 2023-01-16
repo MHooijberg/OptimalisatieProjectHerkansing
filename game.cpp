@@ -1,7 +1,7 @@
 #include "precomp.h" // include (only) this in every .cpp file
 
-constexpr auto num_tanks_blue = 2048;
-constexpr auto num_tanks_red = 2048;
+constexpr auto num_tanks_blue = 256;
+constexpr auto num_tanks_red = 256;
 
 constexpr auto tank_max_health = 1000;
 constexpr auto rocket_hit_value = 60;
@@ -248,6 +248,20 @@ void Game::update(float deltaTime)
         // Big-O analysis: O (N²)
         // ====
         grahamScan(activeTanks, forcefield_hull);
+
+        bool test = true;
+        for (size_t i = 0; i < forcefield_hull.size() - 2; i++) {
+            if (orientation(forcefield_hull[i], forcefield_hull[i + 1], forcefield_hull[i + 2]) == 1) {
+                test = false;
+            }
+        }
+        if (!test) {
+            forcefield_hull.clear();
+            forcefield_hull.push_back({ 0.0f, 0.0f });
+            forcefield_hull.push_back({ 2000.0f, 0.0f });
+            forcefield_hull.push_back({ 2000.0f, 2000.0f });
+            forcefield_hull.push_back({ 0.0f, 2000.0f });
+        }
         /*for (auto tank : activeTanks)
         {
             forcefield_hull.push_back(point_on_hull);
@@ -764,7 +778,7 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
     for (size_t i = 1; i < sorted_list.size(); i++) {
         float y = sorted_list[i].y;
         float y_diff = fabs(y - y_min);
-        if ((y < y_min) || (y_diff <= 0.000001f && sorted_list[i].x < sorted_list[min_index].x)) {
+        if ((y < y_min) || (y_diff <= 0.00000001f && sorted_list[i].x < sorted_list[min_index].x)) {
             y_min = sorted_list[i].y, min_index = i;
         }
     }
@@ -780,7 +794,7 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
                 float dist_a = p0.distance_square(a);
                 float dist_b = p0.distance_square(b);
                 const float difference = fabs(dist_a - dist_b);
-                if (difference >= 0.000001f) return false;
+                if (difference >= 0.00000001f) return false;
                 else return dist_a < dist_b;
             }
             else
@@ -790,7 +804,7 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
         });
 
     vector<vec2> non_duplicate_sorted_list{ sorted_list.front()};
-    non_duplicate_sorted_list.push_back(sorted_list.front());
+    //non_duplicate_sorted_list.push_back(sorted_list.front());
     for (size_t i = 1; i < sorted_list.size()-1; i++) {
         if (orientation(p0, sorted_list[i], sorted_list[i + 1]) == 0) continue;
         else non_duplicate_sorted_list.push_back(sorted_list[i]);

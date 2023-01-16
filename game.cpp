@@ -65,13 +65,13 @@ void Game::init()
     //Spawn blue tanks
     for (int i = 0; i < num_tanks_blue; i++)
     {
-        vec2 position{ start_blue_x + ((i % max_rows) * spacing), start_blue_y + ((i / max_rows) * spacing) };
+        vec2 position{ start_blue_x + ((i % max_rows) * spacing), start_blue_y + ((i / max_rows) * spacing)};
         tanks.push_back(Tank(position.x, position.y, BLUE, &tank_blue, &smoke, 1100.f, position.y + 16, tank_radius, tank_max_health, tank_max_speed));
     }
     //Spawn red tanks
     for (int i = 0; i < num_tanks_red; i++)
     {
-        vec2 position{ start_red_x + ((i % max_rows) * spacing), start_red_y + ((i / max_rows) * spacing) };
+        vec2 position{ start_red_x + ((i % max_rows) * spacing), start_red_y + ((i / max_rows) * spacing)};
         tanks.push_back(Tank(position.x, position.y, RED, &tank_red, &smoke, 100.f, position.y + 16, tank_radius, tank_max_health, tank_max_speed));
     }
 
@@ -223,7 +223,8 @@ void Game::update(float deltaTime)
     }
 
     // Calculate convex hull.
-    if (!rockets.empty())
+    //TODO: temp way to make convex hull update constantly
+    if (true || !rockets.empty())
     {
         activeTanks.erase(std::remove_if(activeTanks.begin(), activeTanks.end(), [](const Tank* tank) { return !(*tank).active;  }), activeTanks.end());
         forcefield_hull.clear();
@@ -734,8 +735,8 @@ void Game::tick(float deltaTime)
 // -----------------------------------------------------------
 // Find orientation for three points in order
 // -----------------------------------------------------------
-int Game::orientation(vec2 a, vec2 b, vec2 c) {
-    // Return if points are on a line
+int Game::orientation(vec2& a, vec2& b, vec2& c) {
+    // Return 0 if points are on a line
     // Return 1 if points are in clockwise direction
     // Return 2 if points are in counterclockwise direction
     int val =   (b.y - a.y) * (c.x - b.x) -
@@ -762,35 +763,40 @@ void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
     float y_min = sorted_list[0].y, min_index = 0;
     for (size_t i = 1; i < sorted_list.size(); i++) {
         float y = sorted_list[i].y;
-        if ((y < y_min) || (y_min == y && sorted_list[i].x< sorted_list[min_index].x)) {
+        float y_diff = fabs(y - y_min);
+        if ((y < y_min) || (y_diff <= 0.000001f && sorted_list[i].x < sorted_list[min_index].x)) {
             y_min = sorted_list[i].y, min_index = i;
         }
     }
     std::swap(sorted_list[0], sorted_list[min_index]);
     
-    vec2 p0(sorted_list[0].x, sorted_list[0].y);
-    std::sort(sorted_list.begin(), sorted_list.end(),
-        [&p0](vec2 a, vec2 b) -> bool
+    vec2 p0(sorted_list[0].x, sorted_list[0].y );
+    std::sort(sorted_list.begin()+1, sorted_list.end(),
+        [&](vec2& a, vec2& b) -> bool
         {
-            auto angle_a = p0.polarAngle(a);
-            auto angle_b = p0.polarAngle(b);
-            if (angle_a == angle_b) return a.sqr_length() < b.sqr_length();
-            else return angle_a < angle_b;
+            int o = orientation(p0, a, b);
+            if (o == 0)
+            {
+                float dist_a = p0.distance_square(a);
+                float dist_b = p0.distance_square(b);
+                const float difference = fabs(dist_a - dist_b);
+                if (difference >= 0.000001f) return false;
+                else return dist_a < dist_b;
+            }
+            else
+            {
+                return o == 2;
+            }
         });
 
-    vector<size_t> remove_indices;
-    for (size_t i = 0; i < sorted_list.size() - 1; i++) {
-        if (p0.polarAngle(sorted_list[i]) != p0.polarAngle(sorted_list[i + 1])) continue;
-        else {
-            remove_indices.push_back(i);
-        }
-    }
-
-    vector<vec2> non_duplicate_sorted_list;
-    for (size_t i = 0; i < sorted_list.size(); i++) {
-        if (std::count(remove_indices.begin(), remove_indices.end(), i)) continue;
+    vector<vec2> non_duplicate_sorted_list{ sorted_list.front()};
+    non_duplicate_sorted_list.push_back(sorted_list.front());
+    for (size_t i = 1; i < sorted_list.size()-1; i++) {
+        if (orientation(p0, sorted_list[i], sorted_list[i + 1]) == 0) continue;
         else non_duplicate_sorted_list.push_back(sorted_list[i]);
     }
+    non_duplicate_sorted_list.push_back(sorted_list.back());
+
     
     if (non_duplicate_sorted_list.size() < 3) return;
 

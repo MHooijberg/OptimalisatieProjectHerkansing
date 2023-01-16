@@ -17,7 +17,7 @@ class Game
     void update(float deltaTime);
     void draw();
     void tick(float deltaTime);
-    int orientation(vec2 p, vec2 q, vec2 r);
+    int orientation(vec2& a, vec2& b, vec2& c);
     void grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull);
     void insertion_sort_tanks_health(const std::vector<Tank>& original, std::vector<const Tank*>& sorted_tanks, int begin, int end);
     void draw_health_bars(const std::vector<const Tank*>& sorted_tanks, const int team);

@@ -147,6 +147,10 @@ class vec2 // adapted from https://github.com/dcow/RayTracer
         float lengthResult = length() * operand.length();
         return acos(dotResult / lengthResult);
     }
+    float distance_square(vec2& other) {
+        return (x - other.x) * (x - other.x) +
+            (y - other.y) * (y - other.y);
+    }
     static vec2 normalize(vec2 v) { return v.normalized(); }
     float dot(const vec2& operand) const { return x * operand.x + y * operand.y; }
 };

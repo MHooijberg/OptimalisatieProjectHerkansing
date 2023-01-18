@@ -1,7 +1,7 @@
 ﻿#include "precomp.h" // include (only) this in every .cpp file
 
-constexpr auto num_tanks_blue = 2048;
-constexpr auto num_tanks_red = 2048;
+constexpr auto num_tanks_blue = 256;
+constexpr auto num_tanks_red = 256;
 
 constexpr auto tank_max_health = 1000;
 constexpr auto rocket_hit_value = 60;
@@ -316,7 +316,8 @@ void Game::update(float deltaTime)
     active_tanks.erase(std::remove_if(active_tanks.begin(), active_tanks.end(), [](const Tank tank) { return !tank.active; }), active_tanks.end());
 
     // Calculate convex hull.
-    if (!rockets.empty())
+    //TODO: temp way to make convex hull update constantly
+    if (true || !rockets.empty())
     {
         forcefield_hull.clear();
         // TODO: sort active tanks here.
@@ -338,7 +339,22 @@ void Game::update(float deltaTime)
         // ====
         // Big-O analysis: O (N�)
         // ====
-        for (auto tank : active_tanks)
+        grahamScan(activeTanks, forcefield_hull);
+
+        bool test = true;
+        for (size_t i = 0; i < forcefield_hull.size() - 2; i++) {
+            if (orientation(forcefield_hull[i], forcefield_hull[i + 1], forcefield_hull[i + 2]) == 1) {
+                test = false;
+            }
+        }
+        if (!test) {
+            forcefield_hull.clear();
+            forcefield_hull.push_back({ 0.0f, 0.0f });
+            forcefield_hull.push_back({ 2000.0f, 0.0f });
+            forcefield_hull.push_back({ 2000.0f, 2000.0f });
+            forcefield_hull.push_back({ 0.0f, 2000.0f });
+        }
+        /*for (auto tank : activeTanks)
         {
             forcefield_hull.push_back(point_on_hull);
             vec2 endpoint = (active_tanks[0]).position;
@@ -357,7 +373,7 @@ void Game::update(float deltaTime)
             {
                 break;
             }
-        }
+        }*/
     }
 
     // TODO: Check if it's more efficient to also delete rockets here.
@@ -867,4 +883,83 @@ void Game::tick(float deltaTime)
     frame_count++;
     string frame_count_string = "FRAME: " + std::to_string(frame_count);
     frame_count_font->print(screen, frame_count_string.c_str(), 350, 580);
+}
+
+// -----------------------------------------------------------
+// Find orientation for three points in order
+// -----------------------------------------------------------
+int Game::orientation(vec2& a, vec2& b, vec2& c) {
+    // Return 0 if points are on a line
+    // Return 1 if points are in clockwise direction
+    // Return 2 if points are in counterclockwise direction
+    int val =   (b.y - a.y) * (c.x - b.x) -
+                (b.x - a.x) * (c.y - b.y);
+    if (val == 0) return 0;
+    return (val > 0) ? 1 : 2;
+}
+
+// -----------------------------------------------------------
+// Optimalisation Modifications
+// -----------------------------------------------------------
+void Game::grahamScan(vector<Tank*>& tankList, vector<vec2>& convex_hull) {
+    // Create copy of active tank list
+    // Get the vec2 with lowest y value and put it at the front as p0
+    // Sort list by ascending polar angle, if equal put closest point first
+    // Check if any points have the same polar angle, save index of close-by one
+    // Make copy of sorted list, removing duplicate polar angle incices
+    // Check if list is bigger than 3
+    // Run through Graham Scan algorithm, continuously checking if resulting hull is convex, otherwise removing a value
+    vector<vec2> sorted_list;
+    for (auto tank : tankList) {
+        sorted_list.push_back(tank->position);
+    }
+    float y_min = sorted_list[0].y, min_index = 0;
+    for (size_t i = 1; i < sorted_list.size(); i++) {
+        float y = sorted_list[i].y;
+        float y_diff = fabs(y - y_min);
+        if ((y < y_min) || (y_diff <= 0.00000001f && sorted_list[i].x < sorted_list[min_index].x)) {
+            y_min = sorted_list[i].y, min_index = i;
+        }
+    }
+    std::swap(sorted_list[0], sorted_list[min_index]);
+    
+    vec2 p0(sorted_list[0].x, sorted_list[0].y );
+    std::sort(sorted_list.begin()+1, sorted_list.end(),
+        [&](vec2& a, vec2& b) -> bool
+        {
+            int o = orientation(p0, a, b);
+            if (o == 0)
+            {
+                float dist_a = p0.distance_square(a);
+                float dist_b = p0.distance_square(b);
+                const float difference = fabs(dist_a - dist_b);
+                if (difference >= 0.00000001f) return false;
+                else return dist_a < dist_b;
+            }
+            else
+            {
+                return o == 2;
+            }
+        });
+
+    vector<vec2> non_duplicate_sorted_list{ sorted_list.front()};
+    //non_duplicate_sorted_list.push_back(sorted_list.front());
+    for (size_t i = 1; i < sorted_list.size()-1; i++) {
+        if (orientation(p0, sorted_list[i], sorted_list[i + 1]) == 0) continue;
+        else non_duplicate_sorted_list.push_back(sorted_list[i]);
+    }
+    non_duplicate_sorted_list.push_back(sorted_list.back());
+
+    
+    if (non_duplicate_sorted_list.size() < 3) return;
+
+    convex_hull.insert(convex_hull.end(), non_duplicate_sorted_list.begin(), non_duplicate_sorted_list.begin() + 3);
+
+    for (size_t i = 3; i < non_duplicate_sorted_list.size(); i++)
+    {
+        while (convex_hull.size() > 1 && orientation(convex_hull.rbegin()[1], convex_hull.back(), non_duplicate_sorted_list[i]) != 2) {
+            convex_hull.pop_back();
+        }
+        convex_hull.push_back(non_duplicate_sorted_list[i]);
+    }
 }

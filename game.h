@@ -17,6 +17,8 @@ namespace Tmpl8
         void update(float deltaTime);
         void draw();
         void tick(float deltaTime);
+        int orientation(vec2& a, vec2& b, vec2& c);
+        void grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull);
         void insertion_sort_tanks_health(const std::vector<int*> sorting_array, int const begin_index, int const end_index);
         void draw_health_bars(const std::vector<int*> sorted_health, const int team, const int team_size);
         void measure_performance();

@@ -179,9 +179,8 @@ void Game::update(float deltaTime)
         /*for (Tank& t : tanks)
         {
             t.set_route(background_terrain.get_route(t, t.target));
-            
+            uni_grid.add_to_grid(t);            
         }*/
-        uni_grid.add_to_grid(t);
     }
 
 

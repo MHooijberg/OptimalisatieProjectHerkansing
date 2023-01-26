@@ -179,7 +179,9 @@ void Game::update(float deltaTime)
         /*for (Tank& t : tanks)
         {
             t.set_route(background_terrain.get_route(t, t.target));
+            
         }*/
+        uni_grid.add_to_grid(t);
     }
 
 
@@ -973,3 +975,5 @@ void Game::grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull) {
         convex_hull.push_back(non_duplicate_sorted_list[i]);
     }
 }
+
+

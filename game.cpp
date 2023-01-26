@@ -176,11 +176,18 @@ void Game::update(float deltaTime)
             start_at += count;
         }
         wait_and_clear();
-        /*for (Tank& t : tanks)
+
+        // Voeg de moveables toe
+        for (Tank& t : active_tanks)
         {
-            t.set_route(background_terrain.get_route(t, t.target));
-            uni_grid.add_to_grid(t);            
-        }*/
+            //t.set_route(background_terrain.get_route(t, t.target));
+            uni_grid.add_to_grid(&t, t.position);            
+        }
+        for (Rocket& r : rockets) {
+            uni_grid.add_to_grid(&r, r.position);
+        }
+        // Voor de particle beam moet ik nog ff kijken morgen.
+
     }
 
 
@@ -191,19 +198,41 @@ void Game::update(float deltaTime)
             for (int j = start_at; j < start_at + count; j++) {
                 Tank& tank = active_tanks.at(j);
                     // Check for tank collision.
-                    for (Tank& other_tank : active_tanks)
+                    //for (Tank& other_tank : active_tanks)
+                    //{
+                    //    if (&tank == &other_tank || !other_tank.active) continue;
+
+                    //    vec2 dir = tank.get_position() - other_tank.get_position();
+                    //    float dir_squared_len = dir.sqr_length();
+
+                    //    float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
+                    //    col_squared_len *= col_squared_len;
+
+                    //    if (dir_squared_len < col_squared_len)
+                    //    {
+                    //        tank.push(dir.normalized(), 1.f);
+                    //    }
+                    //}
+                    // Check for tank collision with uni_grid.
+                    vector<movable*> collision_objects =  uni_grid.get_neighboring_objects(tank.position);
+                    for (movable* collision_object : collision_objects)
                     {
-                        if (&tank == &other_tank || !other_tank.active) continue;
-
-                        vec2 dir = tank.get_position() - other_tank.get_position();
-                        float dir_squared_len = dir.sqr_length();
-
-                        float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
-                        col_squared_len *= col_squared_len;
-
-                        if (dir_squared_len < col_squared_len)
+                        if (collision_object->moveable_type == movableType::TANK)
                         {
-                            tank.push(dir.normalized(), 1.f);
+                            Tank& collidable_tank = dynamic_cast<Tank&>(collision_object);
+
+                            if (&tank == &collidable_tank || !collidable_tank.active) continue;
+
+                            vec2 dir = tank.get_position() - collidable_tank.get_position();
+                            float dir_squared_len = dir.sqr_length();
+
+                            float col_squared_len = (tank.get_collision_radius() + collidable_tank.get_collision_radius());
+                            col_squared_len *= col_squared_len;
+
+                            if (dir_squared_len < col_squared_len)
+                            {
+                                tank.push(dir.normalized(), 1.f);
+                            }
                         }
                     }
             }
@@ -289,7 +318,35 @@ void Game::update(float deltaTime)
                         }
                     }
                 }
+                vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
+                for (movable* collision_object : collision_objects)
+                {
+                    if (collision_object->moveable_type == movableType::ROCKET)
+                    {
+                        Rocket& rocket = dynamic_cast<Rocket&>(collision_object);
 
+                        if ((tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
+                        {
+                            // TODO: Should remove rocket from list
+                            rocket.active = false;
+
+                            mlock.lock();
+                            explosions.push_back(Explosion(&explosion, tank.position));
+                            mlock.unlock();
+
+                            if (tank.hit(rocket_hit_value))
+                            {
+                                mlock.lock();
+                                smokes.push_back(Smoke(smoke, tank.position - vec2(7, 24)));
+                                mlock.unlock();
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Still need to figure out the location of particle beams to make it work with uni_form grid.
+                // However there are 4 particle beams and wont add a big performance decrease.
                 if (tank.active) {
                     // Check for beam collision.
                     for (Particle_beam& particle_beam : particle_beams)

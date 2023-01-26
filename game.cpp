@@ -53,8 +53,9 @@ vector<int> split_evenly(int dividend, int divisor) {
 
     int initial_value = floor(dividend / divisor);
     vector<int> results;
-    for (int i = 0; i < divisor; i++)
+    for (int i = 0; i < divisor; i++) {
         results.push_back(initial_value + (remainder-- > 0 ? 1 : 0));
+    }
     return results;
 }
 
@@ -727,10 +728,10 @@ void Game::draw()
 
     //Start a thread for each color of tank where they're sorted
     auto sort_blue = pool->enqueue([&]() {
-        std::sort(blue_tanks_health.begin(), blue_tanks_health.end());
+        merge_sort(blue_tanks_health);
         });
     auto sort_red = pool->enqueue([&]() {
-        std::sort(red_tanks_health.begin(), red_tanks_health.end());
+        merge_sort(red_tanks_health);
         });
 
     // clear the graphics window
@@ -740,11 +741,11 @@ void Game::draw()
     background_terrain.draw(screen);
 
     
-    for (Tank tank : active_tanks) {
+    for (Tank& tank : active_tanks) {
         tank.draw(screen);
     }
 
-    for (Tank tank : inactive_tanks) {
+    for (Tank& tank : inactive_tanks) {
         tank.draw(screen);
     }
 
@@ -782,11 +783,44 @@ void Game::draw()
     sort_blue.wait();
     sort_red.wait();
 
+
     //Draw the health bars for both tank health lists, the integer represents the color
     //0 for blue
     //1 for red
     draw_health_bars(blue_tanks_health, 0, blue_count);
     draw_health_bars(red_tanks_health, 1, red_count);
+}
+
+void Tmpl8::Game::merge(vector<int*>& left, vector<int*>& right, vector<int*>& tanks_health) {
+    int left_size = left.size();
+    int right_size = right.size();
+    int i = 0; int j = 0; int k = 0;
+
+    while (j < left_size && k < right_size) {
+        tanks_health[i] = (left[j] <= right[k]) ? left[j++] : right[k++];
+        ++i;
+    }
+    while (j < left_size) {
+        tanks_health[i++] = left[j++];
+    }
+    while (k < right_size) {
+        tanks_health[i++] = right[k++];
+    }
+}
+
+void Tmpl8::Game::merge_sort(vector<int*>& tanks_health) {
+    if (tanks_health.size() <= 1) return;
+
+    int middle = tanks_health.size() / 2;
+
+    vector<int*> left; left.reserve(middle);
+    vector<int*> right; right.reserve(tanks_health.size() - middle);
+    std::copy(tanks_health.begin(), tanks_health.begin() + middle, std::back_inserter(left));
+    std::copy(tanks_health.begin() + middle, tanks_health.end(), std::back_inserter(right));
+
+    merge_sort(left);
+    merge_sort(right);
+    Game::merge(left, right, tanks_health);
 }
 
 // -----------------------------------------------------------

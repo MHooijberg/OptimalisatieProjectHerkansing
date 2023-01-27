@@ -713,16 +713,16 @@ void Game::draw()
         }
     }
 
-    vector<int*> blue_tanks_health; blue_tanks_health.reserve(blue_count);
-    vector<int*> red_tanks_health; red_tanks_health.reserve(red_count);
+    vector<int> blue_tanks_health; blue_tanks_health.reserve(blue_count);
+    vector<int> red_tanks_health; red_tanks_health.reserve(red_count);
 
     //Put the health of all tanks into their respective vector
-    for (Tank tank : active_tanks) {
+    for (Tank& tank : active_tanks) {
         if (tank.allignment == BLUE) {
-            blue_tanks_health.push_back(&int(tank.health));
+            blue_tanks_health.push_back(int(tank.health));
         }
         else {
-            red_tanks_health.push_back(&int(tank.health));
+            red_tanks_health.push_back(int(tank.health));
         }
     }
 
@@ -787,11 +787,11 @@ void Game::draw()
     //Draw the health bars for both tank health lists, the integer represents the color
     //0 for blue
     //1 for red
-    draw_health_bars(blue_tanks_health, 0, blue_count);
-    draw_health_bars(red_tanks_health, 1, red_count);
+    draw_health_bars(blue_tanks_health, 0);
+    draw_health_bars(red_tanks_health, 1);
 }
 
-void Tmpl8::Game::merge(vector<int*>& left, vector<int*>& right, vector<int*>& tanks_health) {
+void Tmpl8::Game::merge(vector<int>& left, vector<int>& right, vector<int>& tanks_health) {
     int left_size = left.size();
     int right_size = right.size();
     int i = 0; int j = 0; int k = 0;
@@ -808,13 +808,13 @@ void Tmpl8::Game::merge(vector<int*>& left, vector<int*>& right, vector<int*>& t
     }
 }
 
-void Tmpl8::Game::merge_sort(vector<int*>& tanks_health) {
+void Tmpl8::Game::merge_sort(vector<int>& tanks_health) {
     if (tanks_health.size() <= 1) return;
 
     int middle = tanks_health.size() / 2;
 
-    vector<int*> left; left.reserve(middle);
-    vector<int*> right; right.reserve(tanks_health.size() - middle);
+    vector<int> left; left.reserve(middle);
+    vector<int> right; right.reserve(tanks_health.size() - middle);
     std::copy(tanks_health.begin(), tanks_health.begin() + middle, std::back_inserter(left));
     std::copy(tanks_health.begin() + middle, tanks_health.end(), std::back_inserter(right));
 
@@ -858,7 +858,7 @@ void Tmpl8::Game::merge_sort(vector<int*>& tanks_health) {
 // -----------------------------------------------------------
 // Draw the health bars based on the given tanks health values
 // -----------------------------------------------------------
-void Tmpl8::Game::draw_health_bars(const vector<int*> sorted_health, const int team, const int team_size)
+void Tmpl8::Game::draw_health_bars(const vector<int>& sorted_health, const int team)
 {
     int health_bar_start_x = (team < 1) ? 0 : (SCRWIDTH - HEALTHBAR_OFFSET) - 1;
     int health_bar_end_x = (team < 1) ? health_bar_width : health_bar_start_x + health_bar_width - 1;
@@ -873,14 +873,15 @@ void Tmpl8::Game::draw_health_bars(const vector<int*> sorted_health, const int t
     }
 
     //Draw the <SCRHEIGHT> least healthy tank health bars
-    int draw_count = std::min(SCRHEIGHT, team_size);
+    int draw_count = std::min(SCRHEIGHT, (int)sorted_health.size());
+
     for (int i = 0; i < draw_count - 1; i++)
     {
         //Health bars are 1 pixel each
         int health_bar_start_y = i * 1;
         int health_bar_end_y = health_bar_start_y + 1;
 
-        float health_fraction = (1 - ((double)*sorted_health.at(i) / (double)tank_max_health));
+        float health_fraction = (1 - ((double)sorted_health[i] / (double)tank_max_health));
 
         if (team == 0) { screen->bar(health_bar_start_x + (int)((double)health_bar_width * health_fraction), health_bar_start_y, health_bar_end_x, health_bar_end_y, GREENMASK); }
         else { screen->bar(health_bar_start_x, health_bar_start_y, health_bar_end_x - (int)((double)health_bar_width * health_fraction), health_bar_end_y, GREENMASK); }

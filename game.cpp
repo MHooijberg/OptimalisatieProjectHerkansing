@@ -117,7 +117,30 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
 {
     float closest_distance = numeric_limits<float>::infinity();
     int closest_index = 0;
+    Tank* closest_tank = nullptr;
 
+    //Check neighboring tanks first, maybe you'll get lucky
+    vector<movable*> collision_objects = uni_grid.get_neighboring_objects(current_tank.position);
+    for (movable* collision_object : collision_objects)
+    {
+        if (collision_object->moveable_type == movableType::TANK)
+        {
+            Tank* collidable_tank = dynamic_cast<Tank*>(collision_object);
+            if (collidable_tank->allignment != current_tank.allignment) {
+                float sqr_dist = fabsf((collidable_tank->get_position() - current_tank.get_position()).sqr_length());
+                if (sqr_dist < closest_distance) {
+                    closest_distance = sqr_dist;
+                    closest_tank = collidable_tank;
+                }
+            }
+        }
+    }
+    if (closest_tank) {
+        return *closest_tank;
+    }
+
+
+    //If there isn't an enemy tank neighboring current tank, check all other tanks
     for (int i = 0; i < active_tanks.size(); i++)
     {
         if (active_tanks.at(i).allignment != current_tank.allignment && active_tanks.at(i).active)

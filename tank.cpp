@@ -33,6 +33,10 @@ Tank::Tank(
     this->moveable_type = movableType::TANK;
 }
 
+Tank::Tank() {
+
+}
+
 Tank::~Tank()
 {
 }

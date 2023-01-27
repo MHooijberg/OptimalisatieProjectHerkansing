@@ -7,13 +7,17 @@ vector<movable*> Tmpl8::uniform_grid::get_neighboring_objects(vec2 position)
 	vector<movable*> neighboring_objects;
 	for (int i = -1; i < 2; i++)
 	{
-		for (int j = -1; j < 2; j++)
-		{
-			mlock->lock();
-			neighboring_objects.insert(neighboring_objects.end(),
-				grid[center_tile.x + i][center_tile.y + j].begin(),
-				grid[center_tile.x + i][center_tile.y + j].end());
-			mlock->unlock();
+		if (center_tile.x + i >= 0) {
+			for (int j = -1; j < 2; j++)
+			{
+				if (center_tile.y + j >= 0) {
+					mlock->lock();
+					neighboring_objects.insert(neighboring_objects.end(),
+						grid[center_tile.x + i][center_tile.y + j].begin(),
+						grid[center_tile.x + i][center_tile.y + j].end());
+					mlock->unlock();
+				}
+			}
 		}
 	}
 	return neighboring_objects;

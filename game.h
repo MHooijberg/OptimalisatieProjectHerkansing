@@ -21,7 +21,9 @@ namespace Tmpl8
         int orientation(vec2& a, vec2& b, vec2& c);
         void grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull);
         void insertion_sort_tanks_health(const std::vector<int*> sorting_array, int const begin_index, int const end_index);
-        void draw_health_bars(const std::vector<int*> sorted_health, const int team, const int team_size);
+        void merge(vector<int>& left, vector<int>& right, vector<int>& tanks_health);
+        void merge_sort(vector<int>& tanks_health);
+        void draw_health_bars(const std::vector<int>& sorted_health, const int team);
         void measure_performance();
 
         Tank& find_closest_enemy(Tank& current_tank);

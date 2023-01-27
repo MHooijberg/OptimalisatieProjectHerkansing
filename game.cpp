@@ -1,4 +1,4 @@
-﻿#include "precomp.h" // include (only) this in every .cpp file
+#include "precomp.h" // include (only) this in every .cpp file
 
 constexpr auto num_tanks_blue = 2048;
 constexpr auto num_tanks_red = 2048;
@@ -46,16 +46,20 @@ ThreadPool* pool = new ThreadPool(NUM_OF_THREADS);
 std::mutex mlock;
 vector<future<void>> threads;
 
+//Splits a list of items into even chunks depending on size of dividend and divisor (amount of threads)
+//Gives a list of indices for each chunk in the original list.
 vector<int> split_evenly(int dividend, int divisor) {
     int remainder = dividend % divisor;
 
     int initial_value = floor(dividend / divisor);
     vector<int> results;
-    for (int i = 0; i < divisor; i++)
+    for (int i = 0; i < divisor; i++) {
         results.push_back(initial_value + (remainder-- > 0 ? 1 : 0));
+    }
     return results;
 }
 
+//Wait for all threads and clear them
 void wait_and_clear() {
     for (future<void>& t : threads) {
         t.wait();
@@ -181,15 +185,15 @@ void Game::update(float deltaTime)
 {
     threads.reserve(NUM_OF_THREADS);
     uni_grid.mlock = &mlock;
+    //Split tanks list into chunks equal to NUM_OF_THREADS
     vector<int> split_sizes_tanks = split_evenly(active_tanks.size(), NUM_OF_THREADS);
     //Calculate the route to the destination for each tank using BFS
     //Initializing routes here so it gets counted for performance..
-    // ====
-    // Big-O analysis: O (N)
-    // ====
     if (frame_count == 0)
     {
         int start_at = 0;
+        //Multithread the route calculation
+        //Goes through the list of tanks chunks in split_sizes_tanks and pushes back a task to the thread pool for that chunk of tanks
         for (int count : split_sizes_tanks) {
             threads.push_back(pool->enqueue([&, start_at, count]() {
                 for (int j = start_at; j < start_at + count; j++) {
@@ -200,6 +204,7 @@ void Game::update(float deltaTime)
 
                 }
                 }));
+            //Increase start_at value so next loop starts at the beginning of the next chunk
             start_at += count;
         }
         wait_and_clear();
@@ -247,7 +252,6 @@ void Game::update(float deltaTime)
             }
             }));
     }*/
-
     int start_at = 0;
     for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
@@ -292,7 +296,9 @@ void Game::update(float deltaTime)
                     tank.tick(background_terrain);
                 }
                 else {
+                    mlock.lock();
                     inactive_tanks.push_back(tank);
+                    mlock.unlock();
                 }
 
                 //Shoot at closest target if reloaded
@@ -384,6 +390,7 @@ void Game::update(float deltaTime)
     }
     wait_and_clear();
 
+    //Remove all inactive tanks from the current active_tanks list
     active_tanks.erase(std::remove_if(active_tanks.begin(), active_tanks.end(), [](const Tank tank) { return !tank.active; }), active_tanks.end());
 
     // Calculate convex hull.
@@ -453,8 +460,10 @@ void Game::update(float deltaTime)
         }*/
     }
 
-    // TODO: Check if it's more efficient to also delete rockets here.
     // Check if rocket is outside the convex hull.
+    //Multithread if there's more than 10 times the number of threads in rockets.
+    //Singlethread if there's less than 10 times the number of threads in rockets.
+    //This avoids overhead of spawning threads when there's a small amount of rockets
     start_at = 0;
     if (rockets.size() < 10 * NUM_OF_THREADS) {
         for (Rocket& rocket : rockets) {
@@ -533,7 +542,7 @@ void Game::update(float deltaTime)
 // -----------------------------------------------------------
 void Game::draw()
 {
-
+    //Check how many tanks there are of each color
     int blue_count = 0;
     int red_count = 0;
     for (Tank tank : active_tanks) {
@@ -545,25 +554,25 @@ void Game::draw()
         }
     }
 
-    vector<int*> blue_tanks; blue_tanks.reserve(blue_count);
-    vector<int*> red_tanks; red_tanks.reserve(red_count);
-    int blue = 0;
-    int red = 0;
+    vector<int> blue_tanks_health; blue_tanks_health.reserve(blue_count);
+    vector<int> red_tanks_health; red_tanks_health.reserve(red_count);
 
-    for (Tank tank : active_tanks) {
+    //Put the health of all tanks into their respective vector
+    for (Tank& tank : active_tanks) {
         if (tank.allignment == BLUE) {
-            blue_tanks.push_back(&int(tank.health));
+            blue_tanks_health.push_back(int(tank.health));
         }
         else {
-            red_tanks.push_back(&int(tank.health));
+            red_tanks_health.push_back(int(tank.health));
         }
     }
 
+    //Start a thread for each color of tank where they're sorted
     auto sort_blue = pool->enqueue([&]() {
-        std::sort(blue_tanks.begin(), blue_tanks.end());
+        merge_sort(blue_tanks_health);
         });
     auto sort_red = pool->enqueue([&]() {
-        std::sort(red_tanks.begin(), red_tanks.end());
+        merge_sort(red_tanks_health);
         });
 
     // clear the graphics window
@@ -573,11 +582,11 @@ void Game::draw()
     background_terrain.draw(screen);
 
     
-    for (Tank tank : active_tanks) {
+    for (Tank& tank : active_tanks) {
         tank.draw(screen);
     }
 
-    for (Tank tank : inactive_tanks) {
+    for (Tank& tank : inactive_tanks) {
         tank.draw(screen);
     }
 
@@ -610,20 +619,56 @@ void Game::draw()
         line_end.x += HEALTHBAR_OFFSET;
         screen->line(line_start, line_end, 0x0000ff);
     }
-
+    
+    //Wait for the sorting threads to finish
     sort_blue.wait();
     sort_red.wait();
 
 
-    draw_health_bars(blue_tanks, 0, blue_count);
-    draw_health_bars(red_tanks, 1, red_count);
+    //Draw the health bars for both tank health lists, the integer represents the color
+    //0 for blue
+    //1 for red
+    draw_health_bars(blue_tanks_health, 0);
+    draw_health_bars(red_tanks_health, 1);
+}
+
+void Tmpl8::Game::merge(vector<int>& left, vector<int>& right, vector<int>& tanks_health) {
+    int left_size = left.size();
+    int right_size = right.size();
+    int i = 0; int j = 0; int k = 0;
+
+    while (j < left_size && k < right_size) {
+        tanks_health[i] = (left[j] <= right[k]) ? left[j++] : right[k++];
+        ++i;
+    }
+    while (j < left_size) {
+        tanks_health[i++] = left[j++];
+    }
+    while (k < right_size) {
+        tanks_health[i++] = right[k++];
+    }
+}
+
+void Tmpl8::Game::merge_sort(vector<int>& tanks_health) {
+    if (tanks_health.size() <= 1) return;
+
+    int middle = tanks_health.size() / 2;
+
+    vector<int> left; left.reserve(middle);
+    vector<int> right; right.reserve(tanks_health.size() - middle);
+    std::copy(tanks_health.begin(), tanks_health.begin() + middle, std::back_inserter(left));
+    std::copy(tanks_health.begin() + middle, tanks_health.end(), std::back_inserter(right));
+
+    merge_sort(left);
+    merge_sort(right);
+    Game::merge(left, right, tanks_health);
 }
 
 
 // -----------------------------------------------------------
 // Draw the health bars based on the given tanks health values
 // -----------------------------------------------------------
-void Tmpl8::Game::draw_health_bars(const vector<int*> sorted_health, const int team, const int team_size)
+void Tmpl8::Game::draw_health_bars(const vector<int>& sorted_health, const int team)
 {
     int health_bar_start_x = (team < 1) ? 0 : (SCRWIDTH - HEALTHBAR_OFFSET) - 1;
     int health_bar_end_x = (team < 1) ? health_bar_width : health_bar_start_x + health_bar_width - 1;
@@ -638,14 +683,15 @@ void Tmpl8::Game::draw_health_bars(const vector<int*> sorted_health, const int t
     }
 
     //Draw the <SCRHEIGHT> least healthy tank health bars
-    int draw_count = std::min(SCRHEIGHT, team_size);
+    int draw_count = std::min(SCRHEIGHT, (int)sorted_health.size());
+
     for (int i = 0; i < draw_count - 1; i++)
     {
         //Health bars are 1 pixel each
         int health_bar_start_y = i * 1;
         int health_bar_end_y = health_bar_start_y + 1;
 
-        float health_fraction = (1 - ((double)*sorted_health.at(i) / (double)tank_max_health));
+        float health_fraction = (1 - ((double)sorted_health[i] / (double)tank_max_health));
 
         if (team == 0) { screen->bar(health_bar_start_x + (int)((double)health_bar_width * health_fraction), health_bar_start_y, health_bar_end_x, health_bar_end_y, GREENMASK); }
         else { screen->bar(health_bar_start_x, health_bar_start_y, health_bar_end_x - (int)((double)health_bar_width * health_fraction), health_bar_end_y, GREENMASK); }
@@ -736,6 +782,9 @@ void Game::grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull) {
     for (auto tank : tankList) {
         sorted_list.push_back(tank.position);
     }
+
+    //Check lowest y value, if y values are equal get lowest x value too
+    //Put tank with this value in first position in list
     float y_min = sorted_list[0].y, min_index = 0;
     for (size_t i = 1; i < sorted_list.size(); i++) {
         float y = sorted_list[i].y;
@@ -747,6 +796,7 @@ void Game::grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull) {
     std::swap(sorted_list[0], sorted_list[min_index]);
 
     vec2 p0(sorted_list[0].x, sorted_list[0].y);
+    //Sort list of tanks by polar angle from p0, excluding the first tank (which is p0)
     std::sort(sorted_list.begin() + 1, sorted_list.end(),
         [&](vec2& a, vec2& b) -> bool
         {
@@ -765,8 +815,8 @@ void Game::grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull) {
     }
         });
 
+    //Sort out the duplicate polar angles in the list and only keep the one farthest away
     vector<vec2> non_duplicate_sorted_list{ sorted_list.front() };
-    //non_duplicate_sorted_list.push_back(sorted_list.front());
     for (size_t i = 1; i < sorted_list.size() - 1; i++) {
         if (orientation(p0, sorted_list[i], sorted_list[i + 1]) == 0) continue;
         else non_duplicate_sorted_list.push_back(sorted_list[i]);
@@ -776,8 +826,11 @@ void Game::grahamScan(vector<Tank>& tankList, vector<vec2>& convex_hull) {
 
     if (non_duplicate_sorted_list.size() < 3) return;
 
+    //Insert first three tanks into convex hull
     convex_hull.insert(convex_hull.end(), non_duplicate_sorted_list.begin(), non_duplicate_sorted_list.begin() + 3);
 
+    //Go through the entire list, adding the next tank in the list
+    //If adding the next tank to the list creates a non-convex hull, go back
     for (size_t i = 3; i < non_duplicate_sorted_list.size(); i++)
     {
         while (convex_hull.size() > 1 && orientation(convex_hull.rbegin()[1], convex_hull.back(), non_duplicate_sorted_list[i]) != 2) {

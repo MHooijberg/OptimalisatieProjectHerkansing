@@ -215,28 +215,34 @@ void Game::update(float deltaTime)
 
     }
 
-    for (Tank& tank : active_tanks) {
-        vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
-        for (movable* collision_object : collision_objects)
-        {
-            if (collision_object->moveable_type == movableType::TANK)
-            {
-                Tank* collidable_tank = dynamic_cast<Tank*>(collision_object);
-
-                if (&tank == collidable_tank || !collidable_tank->active) continue;
-
-                vec2 dir = tank.get_position() - collidable_tank->get_position();
-                float dir_squared_len = dir.sqr_length();
-
-                float col_squared_len = (tank.get_collision_radius() + collidable_tank->get_collision_radius());
-                col_squared_len *= col_squared_len;
-
-                if (dir_squared_len < col_squared_len)
+    int start_at = 0;
+    for (int count : split_sizes_tanks) {
+        threads.push_back(pool->enqueue([&, start_at, count]() {
+            for (int j = start_at; j < start_at + count; j++) {
+                Tank& tank = active_tanks[j];
+                vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
+                for (movable* collision_object : collision_objects)
                 {
-                    tank.push(dir.normalized(), 1.f);
+                    if (collision_object->moveable_type == movableType::TANK)
+                    {
+                        Tank* collidable_tank = dynamic_cast<Tank*>(collision_object);
+
+                        if (&tank == collidable_tank || !collidable_tank->active) continue;
+
+                        vec2 dir = tank.get_position() - collidable_tank->get_position();
+                        float dir_squared_len = dir.sqr_length();
+
+                        float col_squared_len = (tank.get_collision_radius() + collidable_tank->get_collision_radius());
+                        col_squared_len *= col_squared_len;
+
+                        if (dir_squared_len < col_squared_len)
+                        {
+                            tank.push(dir.normalized(), 1.f);
+                        }
+                    }
                 }
             }
-        }
+            }));
     }
 
     //LOOK AT ME

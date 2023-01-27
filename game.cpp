@@ -154,6 +154,7 @@ bool Tmpl8::Game::left_of_line(vec2 line_start, vec2 line_end, vec2 point)
 void Game::update(float deltaTime)
 {
     threads.reserve(NUM_OF_THREADS);
+    uni_grid.mlock = &mlock;
     vector<int> split_sizes_tanks = split_evenly(active_tanks.size(), NUM_OF_THREADS);
     //Calculate the route to the destination for each tank using BFS
     //Initializing routes here so it gets counted for performance..
@@ -190,56 +191,58 @@ void Game::update(float deltaTime)
 
     }
 
+    for (Tank& tank : active_tanks) {
+        vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
+        for (movable* collision_object : collision_objects)
+        {
+            if (collision_object->moveable_type == movableType::TANK)
+            {
+                Tank& collidable_tank = dynamic_cast<Tank&>(collision_object);
+
+                if (&tank == &collidable_tank || !collidable_tank.active) continue;
+
+                vec2 dir = tank.get_position() - collidable_tank.get_position();
+                float dir_squared_len = dir.sqr_length();
+
+                float col_squared_len = (tank.get_collision_radius() + collidable_tank.get_collision_radius());
+                col_squared_len *= col_squared_len;
+
+                if (dir_squared_len < col_squared_len)
+                {
+                    tank.push(dir.normalized(), 1.f);
+                }
+            }
+        }
+    }
 
     // TODO: Sort from left to right and up to down, might not be needed. Its only needed for the convex hull algorithm.
-    int start_at = 0;
+    /*int start_at = 0;
     for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
             for (int j = start_at; j < start_at + count; j++) {
                 Tank& tank = active_tanks.at(j);
                     // Check for tank collision.
-                    //for (Tank& other_tank : active_tanks)
-                    //{
-                    //    if (&tank == &other_tank || !other_tank.active) continue;
-
-                    //    vec2 dir = tank.get_position() - other_tank.get_position();
-                    //    float dir_squared_len = dir.sqr_length();
-
-                    //    float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
-                    //    col_squared_len *= col_squared_len;
-
-                    //    if (dir_squared_len < col_squared_len)
-                    //    {
-                    //        tank.push(dir.normalized(), 1.f);
-                    //    }
-                    //}
-                    // Check for tank collision with uni_grid.
-                    vector<movable*> collision_objects =  uni_grid.get_neighboring_objects(tank.position);
-                    for (movable* collision_object : collision_objects)
+                    for (Tank& other_tank : active_tanks)
                     {
-                        if (collision_object->moveable_type == movableType::TANK)
+                        if (&tank == &other_tank || !other_tank.active) continue;
+
+                        vec2 dir = tank.get_position() - other_tank.get_position();
+                        float dir_squared_len = dir.sqr_length();
+
+                        float col_squared_len = (tank.get_collision_radius() + other_tank.get_collision_radius());
+                        col_squared_len *= col_squared_len;
+
+                        if (dir_squared_len < col_squared_len)
                         {
-                            Tank& collidable_tank = dynamic_cast<Tank&>(collision_object);
-
-                            if (&tank == &collidable_tank || !collidable_tank.active) continue;
-
-                            vec2 dir = tank.get_position() - collidable_tank.get_position();
-                            float dir_squared_len = dir.sqr_length();
-
-                            float col_squared_len = (tank.get_collision_radius() + collidable_tank.get_collision_radius());
-                            col_squared_len *= col_squared_len;
-
-                            if (dir_squared_len < col_squared_len)
-                            {
-                                tank.push(dir.normalized(), 1.f);
-                            }
+                            tank.push(dir.normalized(), 1.f);
                         }
                     }
+                    // Check for tank collision with uni_grid.
             }
             }));
         start_at += count;
     }
-    wait_and_clear();
+    wait_and_clear();*/
     /*for (Tank& tank : tanks) {
         if (tank.active)
         {
@@ -270,7 +273,7 @@ void Game::update(float deltaTime)
     //for (vector<Tank*>::iterator tank = active_tanks.begin(); tank != active_tanks.end();) {
 
     //for (auto tank : active_tanks) {
-    start_at = 0;
+    int start_at = 0;
     for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
             for (int j = start_at; j < start_at + count; j++) {
@@ -298,7 +301,7 @@ void Game::update(float deltaTime)
 
                 // Check for rocket collision.
                 //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
-                for (Rocket& rocket : rockets)
+                /*for (Rocket& rocket : rockets)
                 {
                     if ((tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
                     {
@@ -317,7 +320,8 @@ void Game::update(float deltaTime)
                             break;
                         }
                     }
-                }
+                }*/
+
                 vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
                 for (movable* collision_object : collision_objects)
                 {

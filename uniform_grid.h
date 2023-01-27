@@ -31,12 +31,13 @@ namespace Tmpl8
 		vector<movable*> get_neighboring_objects(vec2 position);
 		void add_to_grid(movable* movable_object, vec2 position);
 		void update_grid(movable* movable_object, vec2 old_position, vec2 new_position);
+		mutex* mlock;
 
 	private:
 		std::array<std::array<std::list<movable*>, 45>, 80> grid;
 		static const int screen_width = 1280;
 		static const int screen_height = 720;
-		vec2 get_tile_indexes(vec2 position);
+		vec2 get_tile_indices(vec2 position);
 	};
 }
 

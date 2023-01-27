@@ -6,13 +6,14 @@ namespace Tmpl8
 
 Particle_beam::Particle_beam() : min_position(), max_position(), particle_beam_sprite(nullptr), sprite_frame(0), rectangle(), damage(1)
 {
+    this->moveable_type = movableType::BEAM;
 }
 
 Particle_beam::Particle_beam(vec2 min, vec2 max, Sprite* particle_beam_sprite, int damage) : particle_beam_sprite(particle_beam_sprite), sprite_frame(0), damage(damage)
 {
     min_position = min;
     max_position = min + max;
-
+    this->moveable_type = movableType::BEAM;
     rectangle = Rectangle2D(min_position, max_position);
 }
 

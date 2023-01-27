@@ -1,4 +1,5 @@
 #pragma once
+#include "uniform_grid.h"
 
 namespace Tmpl8
 {
@@ -67,6 +68,8 @@ namespace Tmpl8
 
         //Checks if a point lies on the left of an arbitrary angled line
         bool left_of_line(vec2 line_start, vec2 line_end, vec2 point);
+
+        uniform_grid uni_grid;
     };
 
 }; // namespace Tmpl8

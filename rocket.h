@@ -3,7 +3,7 @@
 namespace Tmpl8
 {
 
-class Rocket
+class Rocket : public movable
 {
   public:
     Rocket(vec2 position, vec2 direction, float collision_radius, allignments allignment, Sprite* rocket_sprite);

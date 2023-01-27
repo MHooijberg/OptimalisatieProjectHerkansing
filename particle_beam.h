@@ -2,7 +2,7 @@
 
 namespace Tmpl8
 {
-class Particle_beam
+class Particle_beam : public movable
 {
   public:
     Particle_beam();

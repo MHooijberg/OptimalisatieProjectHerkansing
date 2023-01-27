@@ -121,6 +121,7 @@
   <ItemGroup>
     <ClCompile Include="explosion.cpp" />
     <ClCompile Include="game.cpp" />
+    <ClCompile Include="movable.cpp" />
     <ClCompile Include="particle_beam.cpp" />
     <ClCompile Include="rocket.cpp" />
     <ClCompile Include="smoke.cpp" />
@@ -130,10 +131,12 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="terrain.cpp" />
+    <ClCompile Include="uniform_grid.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="explosion.h" />
     <ClInclude Include="game.h" />
+    <ClInclude Include="movable.h" />
     <ClInclude Include="particle_beam.h" />
     <ClInclude Include="precomp.h" />
     <ClInclude Include="rocket.h" />
@@ -143,6 +146,7 @@
     <ClInclude Include="template.h" />
     <ClInclude Include="terrain.h" />
     <ClInclude Include="thread_pool.h" />
+    <ClInclude Include="uniform_grid.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="_readme.txt" />

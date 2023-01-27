@@ -121,6 +121,8 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     Tank* closest_tank = nullptr;
 
     //Check neighboring tanks first, maybe you'll get lucky
+    //This code is currently (probably) not working, just like the other two parts where neighboring objects are called
+    //This code just defaults to the other (less efficient) method below so it's fine to leave in.
     vector<movable*> collision_objects = uni_grid.get_neighboring_objects(current_tank.position);
     for (movable* collision_object : collision_objects)
     {
@@ -215,7 +217,8 @@ void Game::update(float deltaTime)
 
     }
 
-    int start_at = 0;
+    //This code is currently broken. We think something weird is happening with pointers so tanks don't actually nudge eachother
+    /*int start_at = 0;
     for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
             for (int j = start_at; j < start_at + count; j++) {
@@ -243,14 +246,9 @@ void Game::update(float deltaTime)
                 }
             }
             }));
-    }
+    }*/
 
-    //LOOK AT ME
-    //
-    //UMCOMMENT THIS and comment above for loop if collision object casting bug is present
-    //
-    //
-    /*int start_at = 0;
+    int start_at = 0;
     for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
             for (int j = start_at; j < start_at + count; j++) {
@@ -276,7 +274,7 @@ void Game::update(float deltaTime)
             }));
         start_at += count;
     }
-    wait_and_clear();*/
+    wait_and_clear();
     
 
     for (Rocket& rocket : rockets) {
@@ -309,7 +307,8 @@ void Game::update(float deltaTime)
                     tank.reload_rocket();
                 }
 
-                vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
+                //This code is currently broken, we think it does something weird with pointers so rockets fly straight through the tanks
+                /*vector<movable*> collision_objects = uni_grid.get_neighboring_objects(tank.position);
                 for (movable* collision_object : collision_objects)
                 {
                     if (collision_object->moveable_type == movableType::ROCKET)
@@ -318,7 +317,6 @@ void Game::update(float deltaTime)
 
                         if ((tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
                         {
-                            // TODO: Should remove rocket from list
                             rocket.active = false;
 
                             mlock.lock();
@@ -334,17 +332,12 @@ void Game::update(float deltaTime)
                             }
                         }
                     }
-                }
+                }*/
 
-                //LOOK AT ME
-                // 
-                // 
-                // UNCOMMENT THIS FUNCTION and comment above function if collision object casting bug is present
-                // 
-                // 
+                
                 // Check for rocket collision.
                 //Check if rocket collides with enemy tank, spawn explosion, and if tank is destroyed spawn a smoke plume
-                /*for (Rocket& rocket : rockets)
+                for (Rocket& rocket : rockets)
                 {
                     if ((tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
                     {
@@ -363,7 +356,7 @@ void Game::update(float deltaTime)
                             break;
                         }
                     }
-                }*/
+                }
 
                 // Still need to figure out the location of particle beams to make it work with uni_form grid.
                 // However there are 4 particle beams and wont add a big performance decrease.

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "movable.h"
 namespace Tmpl8
 {
     class Terrain; //forward declare

@@ -126,7 +126,7 @@ Tank& Game::find_closest_enemy(Tank& current_tank)
     {
         if (collision_object->moveable_type == movableType::TANK)
         {
-            Tank* collidable_tank = dynamic_cast<Tank*>(collision_object);
+            Tank* collidable_tank = (Tank*) collision_object;
             if (collidable_tank->allignment != current_tank.allignment) {
                 float sqr_dist = fabsf((collidable_tank->get_position() - current_tank.get_position()).sqr_length());
                 if (sqr_dist < closest_distance) {
@@ -225,7 +225,7 @@ void Game::update(float deltaTime)
                 {
                     if (collision_object->moveable_type == movableType::TANK)
                     {
-                        Tank* collidable_tank = dynamic_cast<Tank*>(collision_object);
+                        Tank* collidable_tank = (Tank*) collision_object;
 
                         if (&tank == collidable_tank || !collidable_tank->active) continue;
 
@@ -283,7 +283,7 @@ void Game::update(float deltaTime)
         rocket.tick();
     }
 
-    int start_at = 0;
+    start_at = 0;
     for (int count : split_sizes_tanks) {
         threads.push_back(pool->enqueue([&, start_at, count]() {
             for (int j = start_at; j < start_at + count; j++) {
@@ -314,7 +314,7 @@ void Game::update(float deltaTime)
                 {
                     if (collision_object->moveable_type == movableType::ROCKET)
                     {
-                        Rocket& rocket = dynamic_cast<Rocket&>(collision_object);
+                        Rocket& rocket = *(Rocket*) collision_object;
 
                         if ((tank.allignment != rocket.allignment) && rocket.intersects(tank.position, tank.collision_radius))
                         {
